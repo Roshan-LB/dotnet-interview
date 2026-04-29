@@ -1,4 +1,8 @@
 using Microsoft.Data.Sqlite;
+using TodoApi.Data;
+using TodoApi.Middleware;
+using TodoApi.Repositories;
+using TodoApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -6,27 +10,52 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+//builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new()
+    {
+        Title = "Todo API",
+        Version = "v1",
+        Description = "RESTful Todo API built with ASP.NET Core 8"
+    });
+
+    // XML comments
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+        c.IncludeXmlComments(xmlPath);
+});
+
+// Register app dependencies
+builder.Services.AddScoped<ITodoRepository, SqliteTodoRepository>();
+builder.Services.AddScoped<ITodoService, TodoService>();
 
 var app = builder.Build();
+// DB
+DatabaseInitializer.Initialize(app.Configuration);
+//Middleware pipeline
+app.UseGlobalExceptionMiddleware();
 
-InitializeDatabase();
+//InitializeDatabase();
 
-// Configure the HTTP request pipeline.
+// Configure HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Todo API v1");
+        c.RoutePrefix = "swagger";
+    });
 }
 
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
 app.MapControllers();
-
 app.Run();
 
+/*
 void InitializeDatabase()
 {
     var connectionString = "Data Source=todos.db";
@@ -47,3 +76,5 @@ void InitializeDatabase()
 
     Console.WriteLine("Database initialized successfully");
 }
+
+*/
